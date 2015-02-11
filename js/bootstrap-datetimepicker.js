@@ -583,7 +583,7 @@
 				startMonth = this.startDate !== -Infinity ? this.startDate.getUTCMonthProxy(type) + 1 : -Infinity,
 				endYear = this.endDate !== Infinity ? this.endDate.getUTCFullYearProxy(type) : Infinity,
 				endMonth = this.endDate !== Infinity ? this.endDate.getUTCMonthProxy(type) + 1 : Infinity,
-				currentDate = new UTCDate(this.date.getUTCFullYear(), this.date.getUTCMonth(), this.date.getUTCDate()),
+				currentDate = new Date(this.date.getFullYear(), this.date.getMonth(), this.date.getDate()),
 				today = new Date();
       
       var monthName = type === 'Jalali' ? jdates[this.language].months[month - 1] : dates[this.language].months[month];
@@ -1592,11 +1592,13 @@
 						while (v < 0) v += 12;
 						if (calendarType !== 'Jalali') v %= 12;
 						d.setUTCMonthProxy(v, calendarType);
-						while (d.getUTCMonthProxy(calendarType) != v)
-							if (isNaN(d.getUTCMonth()))
+						while (d.getUTCMonthProxy(calendarType) != v) {
+							if (isNaN(d.getUTCMonthProxy(calendarType))) {
 								return d;
-							else
-								d.setUTCDateProxy(d.getUTCDate() - 1, calendarType);
+							} else {
+								d.setUTCDateProxy(d.getUTCDateProxy(calendarType) - 1, calendarType);
+							}
+						}
 						return d;
 					},
 					d:    function (d, v) {
@@ -1625,7 +1627,6 @@
 									return m == p;
 								});
 								val = $.inArray(filtered[0], dts[language].months) + 1;
-                if (calendarType === 'Jalali') val += 1;
 								break;
 							case 'M':
                 var dts = calendarType === 'Jalali' ? jdates : dates;

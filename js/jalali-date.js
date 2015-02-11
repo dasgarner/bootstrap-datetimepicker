@@ -44,7 +44,7 @@ Date.prototype.getUTCMonthProxy = function (type) {
   if (type === 'Jalali') {
     return this.getJalaliMonth();
   } else {
-    return this.getUTCMonth();
+    return this.getMonth();
   }
 };
 
@@ -108,7 +108,7 @@ Date.prototype.setUTCMonthProxy = function (m, type) {
   if (type === 'Jalali') {
     this.setJalaliMonth(m);
   } else {
-    this.setUTCMonth(m);
+    this.setMonth(m);
   }
 };
 
