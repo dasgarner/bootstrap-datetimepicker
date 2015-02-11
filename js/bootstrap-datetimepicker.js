@@ -74,6 +74,8 @@
 		this.showMeridian = options.showMeridian || this.element.data('show-meridian') || false;
 		this.initialDate = options.initialDate || new Date();
 		this.zIndex = options.zIndex || this.element.data('z-index') || undefined;
+    
+    this.calendarType = options.calendarType || 'Gregorian';
 
 		this.icons = {
 			leftArrow: this.fontAwesome ? 'fa-arrow-left' : (this.bootcssVer === 3 ? 'glyphicon-arrow-left' : 'icon-arrow-left'),
@@ -401,13 +403,13 @@
 
 		getFormattedDate: function (format) {
 			if (format == undefined) format = this.format;
-			return DPGlobal.formatDate(this.date, format, this.language, this.formatType);
+			return DPGlobal.formatDate(this.date, format, this.language, this.formatType, this.calendarType);
 		},
 
 		setStartDate: function (startDate) {
 			this.startDate = startDate || -Infinity;
 			if (this.startDate !== -Infinity) {
-				this.startDate = DPGlobal.parseDate(this.startDate, this.format, this.language, this.formatType);
+				this.startDate = DPGlobal.parseDate(this.startDate, this.format, this.language, this.formatType, this.calendarType);
 			}
 			this.update();
 			this.updateNavArrows();
@@ -416,7 +418,7 @@
 		setEndDate: function (endDate) {
 			this.endDate = endDate || Infinity;
 			if (this.endDate !== Infinity) {
-				this.endDate = DPGlobal.parseDate(this.endDate, this.format, this.language, this.formatType);
+				this.endDate = DPGlobal.parseDate(this.endDate, this.format, this.language, this.formatType, this.ca);
 			}
 			this.update();
 			this.updateNavArrows();
@@ -502,7 +504,7 @@
 
 			top = top - containerOffset.top;
 			left = left - containerOffset.left;
-			
+
 			top = top + document.body.scrollTop
 
 			this.picker.css({
@@ -529,7 +531,7 @@
 				fromArgs = false;
 			}
 
-			this.date = DPGlobal.parseDate(date, this.format, this.language, this.formatType);
+			this.date = DPGlobal.parseDate(date, this.format, this.language, this.formatType, this.calendarType);
 
 			if (fromArgs) this.setValue();
 
@@ -554,86 +556,116 @@
 		},
 
 		fillMonths: function () {
+      var months = this.calendarType === 'Jalali' ? jdates[this.language] : dates[this.language];
 			var html = '',
 				i = 0;
 			while (i < 12) {
-				html += '<span class="month">' + dates[this.language].monthsShort[i++] + '</span>';
+				html += '<span class="month">' + months.monthsShort[i++] + '</span>';
 			}
 			this.picker.find('.datetimepicker-months td').html(html);
 		},
 
 		fill: function () {
+    
 			if (this.date == null || this.viewDate == null) {
 				return;
 			}
-			var d = new Date(this.viewDate),
-				year = d.getUTCFullYear(),
-				month = d.getUTCMonth(),
-				dayMonth = d.getUTCDate(),
-				hours = d.getUTCHours(),
-				minutes = d.getUTCMinutes(),
-				startYear = this.startDate !== -Infinity ? this.startDate.getUTCFullYear() : -Infinity,
-				startMonth = this.startDate !== -Infinity ? this.startDate.getUTCMonth() + 1 : -Infinity,
-				endYear = this.endDate !== Infinity ? this.endDate.getUTCFullYear() : Infinity,
-				endMonth = this.endDate !== Infinity ? this.endDate.getUTCMonth() + 1 : Infinity,
-				currentDate = (new UTCDate(this.date.getUTCFullYear(), this.date.getUTCMonth(), this.date.getUTCDate())).valueOf(),
+      
+      var type = this.calendarType;
+      
+			var d = new Date(this.viewDate),      
+				year = d.getUTCFullYearProxy(type),
+				month = d.getUTCMonthProxy(type),
+				dayMonth = d.getUTCDateProxy(type),
+				hours = d.getHours(),
+				minutes = d.getMinutes(),
+				startYear = this.startDate !== -Infinity ? this.startDate.getUTCFullYearProxy(type) : -Infinity,
+				startMonth = this.startDate !== -Infinity ? this.startDate.getUTCMonthProxy(type) + 1 : -Infinity,
+				endYear = this.endDate !== Infinity ? this.endDate.getUTCFullYearProxy(type) : Infinity,
+				endMonth = this.endDate !== Infinity ? this.endDate.getUTCMonthProxy(type) + 1 : Infinity,
+				currentDate = new UTCDate(this.date.getUTCFullYear(), this.date.getUTCMonth(), this.date.getUTCDate()),
 				today = new Date();
-			this.picker.find('.datetimepicker-days thead th:eq(1)')
-				.text(dates[this.language].months[month] + ' ' + year);
+      
+      var monthName = type === 'Jalali' ? jdates[this.language].months[month - 1] : dates[this.language].months[month];
+			this.picker.find('.datetimepicker-days thead th:eq(1)').text(monthName + ' ' + year);
+      
 			if (this.formatViewType == "time") {
 				var formatted = this.getFormattedDate();
 				this.picker.find('.datetimepicker-hours thead th:eq(1)').text(formatted);
 				this.picker.find('.datetimepicker-minutes thead th:eq(1)').text(formatted);
 			} else {
 				this.picker.find('.datetimepicker-hours thead th:eq(1)')
-					.text(dayMonth + ' ' + dates[this.language].months[month] + ' ' + year);
+					.text(dayMonth + ' ' + monthName + ' ' + year);
 				this.picker.find('.datetimepicker-minutes thead th:eq(1)')
-					.text(dayMonth + ' ' + dates[this.language].months[month] + ' ' + year);
+					.text(dayMonth + ' ' + monthName + ' ' + year);
 			}
+      
 			this.picker.find('tfoot th.today')
 				.text(dates[this.language].today)
 				.toggle(this.todayBtn !== false);
+        
 			this.updateNavArrows();
 			this.fillMonths();
-			/*var prevMonth = UTCDate(year, month, 0,0,0,0,0);
-			 prevMonth.setUTCDate(prevMonth.getDate() - (prevMonth.getUTCDay() - this.weekStart + 7)%7);*/
-			var prevMonth = UTCDate(year, month - 1, 28, 0, 0, 0, 0),
-				day = DPGlobal.getDaysInMonth(prevMonth.getUTCFullYear(), prevMonth.getUTCMonth());
-			prevMonth.setUTCDate(day);
-			prevMonth.setUTCDate(day - (prevMonth.getUTCDay() - this.weekStart + 7) % 7);
-			var nextMonth = new Date(prevMonth);
+      
+      // set first cell in calendar to the last month's first day of week
+      var pm = month - 1, pe = year;
+      if (type === 'Jalali' && pm === 0) {
+        pm = 12; pe--;
+      }
+			var prevMonth = DateProxy(type, pe, pm, 28);
+			var lastDay = DPGlobal.getDaysInMonth(prevMonth.getUTCFullYear(), prevMonth.getUTCMonthProxy(type), type);
+			prevMonth.setUTCDateProxy(lastDay, type);
+      var startgrid = lastDay - (prevMonth.getDay() - this.weekStart + 7) % 7;
+			prevMonth.setUTCDateProxy(startgrid, type);
+      
+			var nextMonth = new Date(prevMonth.getTime());
 			nextMonth.setUTCDate(nextMonth.getUTCDate() + 42);
 			nextMonth = nextMonth.valueOf();
+      
 			var html = [];
 			var clsName;
 			while (prevMonth.valueOf() < nextMonth) {
-				if (prevMonth.getUTCDay() == this.weekStart) {
+      
+				if (prevMonth.getDay() == this.weekStart) {
 					html.push('<tr>');
 				}
+        
 				clsName = '';
-				if (prevMonth.getUTCFullYear() < year || (prevMonth.getUTCFullYear() == year && prevMonth.getUTCMonth() < month)) {
+        
+				if (prevMonth.getUTCFullYearProxy(type) < year ||
+           (prevMonth.getUTCFullYearProxy(type) == year && prevMonth.getUTCMonthProxy(type) < month)) {
 					clsName += ' old';
-				} else if (prevMonth.getUTCFullYear() > year || (prevMonth.getUTCFullYear() == year && prevMonth.getUTCMonth() > month)) {
+				} else if (prevMonth.getUTCFullYearProxy(type) > year ||
+                  (prevMonth.getUTCFullYearProxy(type) == year && prevMonth.getUTCMonthProxy(type) > month)) {
 					clsName += ' new';
 				}
+        
 				// Compare internal UTC date with local today, not UTC today
-				if (this.todayHighlight &&
-					prevMonth.getUTCFullYear() == today.getFullYear() &&
-					prevMonth.getUTCMonth() == today.getMonth() &&
-					prevMonth.getUTCDate() == today.getDate()) {
+				if (this.todayHighlight && prevMonth.getFullYear() == today.getFullYear() &&
+					                         prevMonth.getMonth() == today.getMonth() &&
+					                         prevMonth.getDate() == today.getDate()) {
 					clsName += ' today';
 				}
-				if (prevMonth.valueOf() == currentDate) {
+        
+				if (prevMonth.getFullYear() == currentDate.getFullYear() &&
+					  prevMonth.getMonth() == currentDate.getMonth() &&
+					  prevMonth.getDate() == currentDate.getDate()) {
 					clsName += ' active';
 				}
+        
+        
+        
 				if ((prevMonth.valueOf() + 86400000) <= this.startDate || prevMonth.valueOf() > this.endDate ||
 					$.inArray(prevMonth.getUTCDay(), this.daysOfWeekDisabled) !== -1) {
 					clsName += ' disabled';
 				}
-				html.push('<td class="day' + clsName + '">' + prevMonth.getUTCDate() + '</td>');
-				if (prevMonth.getUTCDay() == this.weekEnd) {
+        
+        html.push('<td class="day' + clsName + '">' + prevMonth.getUTCDateProxy(type) + '</td>');
+        
+				if (prevMonth.getDay() == this.weekEnd) {
 					html.push('</tr>');
 				}
+        
 				prevMonth.setUTCDate(prevMonth.getUTCDate() + 1);
 			}
 			this.picker.find('.datetimepicker-days tbody').empty().append(html.join(''));
@@ -642,8 +674,9 @@
 			var txt = '', meridian = '', meridianOld = '';
 			var hoursDisabled = this.hoursDisabled || [];
 			for (var i = 0; i < 24; i++) {
+      
 				if (hoursDisabled.indexOf(i) !== -1) continue;
-				var actual = UTCDate(year, month, dayMonth, i);
+				var actual = DateProxy(type, year, month, dayMonth, i);
 				clsName = '';
 				// We want the previous hour for the startDate
 				if ((actual.valueOf() + 3600000) <= this.startDate || actual.valueOf() > this.endDate) {
@@ -677,7 +710,7 @@
 			var minutesDisabled = this.minutesDisabled || [];
 			for (var i = 0; i < 60; i += this.minuteStep) {
 				if (minutesDisabled.indexOf(i) !== -1) continue;
-				var actual = UTCDate(year, month, dayMonth, hours, i, 0);
+				var actual = DateProxy(type, year, month, dayMonth, hours, i, 0);
 				clsName = '';
 				if (actual.valueOf() < this.startDate || actual.valueOf() > this.endDate) {
 					clsName += ' disabled';
@@ -707,7 +740,7 @@
 			}
 			this.picker.find('.datetimepicker-minutes td').html(html.join(''));
 
-			var currentYear = this.date.getUTCFullYear();
+			var currentYear = this.date.getUTCFullYearProxy(type);
 			var months = this.picker.find('.datetimepicker-months')
 				.find('th:eq(1)')
 				.text(year)
@@ -715,7 +748,7 @@
 				.find('span').removeClass('active');
 			if (currentYear == year) {
 				// getUTCMonths() returns 0 based, and we need to select the next one
-				months.eq(this.date.getUTCMonth() + 2).addClass('active');
+				months.eq(type === 'Jalali' ? this.date.getJalaliMonth() + 1 : this.date.getUTCMonth() + 2).addClass('active');
 			}
 			if (year < startYear || year > endYear) {
 				months.addClass('disabled');
@@ -744,68 +777,78 @@
 		},
 
 		updateNavArrows: function () {
+    
+      var type = this.calendarType;
+      
 			var d = new Date(this.viewDate),
-				year = d.getUTCFullYear(),
-				month = d.getUTCMonth(),
-				day = d.getUTCDate(),
-				hour = d.getUTCHours();
+				year = d.getUTCFullYearProxy(type),
+				month = d.getUTCMonthProxy(type),
+				day = d.getUTCDateProxy(type),
+				hour = d.getHours();
+        
 			switch (this.viewMode) {
 				case 0:
-					if (this.startDate !== -Infinity && year <= this.startDate.getUTCFullYear()
-						&& month <= this.startDate.getUTCMonth()
-						&& day <= this.startDate.getUTCDate()
-						&& hour <= this.startDate.getUTCHours()) {
+					if (this.startDate !== -Infinity && year <= this.startDate.getUTCFullYearProxy(type)
+						                               && month <= this.startDate.getUTCMonthProxy(type)
+						                               && day <= this.startDate.getUTCDateProxy(type)
+						                               && hour <= this.startDate.getHours()) {
 						this.picker.find('.prev').css({visibility: 'hidden'});
 					} else {
 						this.picker.find('.prev').css({visibility: 'visible'});
 					}
-					if (this.endDate !== Infinity && year >= this.endDate.getUTCFullYear()
-						&& month >= this.endDate.getUTCMonth()
-						&& day >= this.endDate.getUTCDate()
-						&& hour >= this.endDate.getUTCHours()) {
+          
+					if (this.endDate !== Infinity && year >= this.endDate.getUTCFullYearProxy(type)
+						                            && month >= this.endDate.getUTCMonthProxy(type)
+						                            && day >= this.endDate.getUTCDateProxy(type)
+						                            && hour >= this.endDate.getHours()) {
 						this.picker.find('.next').css({visibility: 'hidden'});
 					} else {
 						this.picker.find('.next').css({visibility: 'visible'});
 					}
 					break;
+          
 				case 1:
-					if (this.startDate !== -Infinity && year <= this.startDate.getUTCFullYear()
-						&& month <= this.startDate.getUTCMonth()
-						&& day <= this.startDate.getUTCDate()) {
+					if (this.startDate !== -Infinity && year <= this.startDate.getUTCFullYearProxy(type)
+						                               && month <= this.startDate.getUTCMonthProxy(type)
+						                               && day <= this.startDate.getUTCDateProxy(type)) {
 						this.picker.find('.prev').css({visibility: 'hidden'});
 					} else {
 						this.picker.find('.prev').css({visibility: 'visible'});
 					}
-					if (this.endDate !== Infinity && year >= this.endDate.getUTCFullYear()
-						&& month >= this.endDate.getUTCMonth()
-						&& day >= this.endDate.getUTCDate()) {
+          
+					if (this.endDate !== Infinity && year >= this.endDate.getUTCFullYearProxy(type)
+						                            && month >= this.endDate.getUTCMonthProxy(type)
+						                            && day >= this.endDate.getUTCDateProxy(type)) {
 						this.picker.find('.next').css({visibility: 'hidden'});
 					} else {
 						this.picker.find('.next').css({visibility: 'visible'});
 					}
 					break;
+          
 				case 2:
-					if (this.startDate !== -Infinity && year <= this.startDate.getUTCFullYear()
-						&& month <= this.startDate.getUTCMonth()) {
+					if (this.startDate !== -Infinity && year <= this.startDate.getUTCFullYearProxy(type)
+						                               && month <= this.startDate.getUTCMonthProxy(type)) {
 						this.picker.find('.prev').css({visibility: 'hidden'});
 					} else {
 						this.picker.find('.prev').css({visibility: 'visible'});
 					}
-					if (this.endDate !== Infinity && year >= this.endDate.getUTCFullYear()
-						&& month >= this.endDate.getUTCMonth()) {
+          
+					if (this.endDate !== Infinity && year >= this.endDate.getUTCFullYearProxy(type)
+						                            && month >= this.endDate.getUTCMonthProxy(type)) {
 						this.picker.find('.next').css({visibility: 'hidden'});
 					} else {
 						this.picker.find('.next').css({visibility: 'visible'});
 					}
 					break;
+          
 				case 3:
 				case 4:
-					if (this.startDate !== -Infinity && year <= this.startDate.getUTCFullYear()) {
+					if (this.startDate !== -Infinity && year <= this.startDate.getUTCFullYearProxy(type)) {
 						this.picker.find('.prev').css({visibility: 'hidden'});
 					} else {
 						this.picker.find('.prev').css({visibility: 'visible'});
 					}
-					if (this.endDate !== Infinity && year >= this.endDate.getUTCFullYear()) {
+					if (this.endDate !== Infinity && year >= this.endDate.getUTCFullYearProxy(type)) {
 						this.picker.find('.next').css({visibility: 'hidden'});
 					} else {
 						this.picker.find('.next').css({visibility: 'visible'});
@@ -846,6 +889,9 @@
 		},
 
 		click: function (e) {
+    
+      var type = this.calendarType;
+    
 			e.stopPropagation();
 			e.preventDefault();
 			var target = $(e.target).closest('span, td, th, legend');
@@ -912,12 +958,13 @@
 								break;
 						}
 						break;
+            
 					case 'span':
 						if (!target.is('.disabled')) {
 							var year = this.viewDate.getUTCFullYear(),
 								month = this.viewDate.getUTCMonth(),
 								day = this.viewDate.getUTCDate(),
-								hours = this.viewDate.getUTCHours(),
+								hours = this.viewDate.getHours(),
 								minutes = this.viewDate.getUTCMinutes(),
 								seconds = this.viewDate.getUTCSeconds();
 
@@ -925,7 +972,9 @@
 								this.viewDate.setUTCDate(1);
 								month = target.parent().find('span').index(target);
 								day = this.viewDate.getUTCDate();
-								this.viewDate.setUTCMonth(month);
+                type === 'Jalali' ?
+                  this.viewDate.setJalaliMonth(month + 1) :
+                  this.viewDate.setUTCMonth(month);
 								this.element.trigger({
 									type: 'changeMonth',
 									date: this.viewDate
@@ -936,7 +985,7 @@
 							} else if (target.is('.year')) {
 								this.viewDate.setUTCDate(1);
 								year = parseInt(target.text(), 10) || 0;
-								this.viewDate.setUTCFullYear(year);
+								this.viewDate.setUTCFullYearProxy(year, type);
 								this.element.trigger({
 									type: 'changeYear',
 									date: this.viewDate
@@ -953,23 +1002,23 @@
 										hours += 12;
 									}
 								}
-								this.viewDate.setUTCHours(hours);
+								this.viewDate.setHours(hours);
 								this.element.trigger({
 									type: 'changeHour',
 									date: this.viewDate
 								});
 								if (this.viewSelect >= 1) {
-									this._setDate(UTCDate(year, month, day, hours, minutes, seconds, 0));
+									this._setDate(new Date(year, month, day, hours, minutes, seconds, 0));
 								}
 							} else if (target.is('.minute')) {
 								minutes = parseInt(target.text().substr(target.text().indexOf(':') + 1), 10) || 0;
-								this.viewDate.setUTCMinutes(minutes);
+								this.viewDate.setMinutes(minutes);
 								this.element.trigger({
 									type: 'changeMinute',
 									date: this.viewDate
 								});
 								if (this.viewSelect >= 0) {
-									this._setDate(UTCDate(year, month, day, hours, minutes, seconds, 0));
+									this._setDate(new Date(year, month, day, hours, minutes, seconds, 0));
 								}
 							}
 							if (this.viewMode != 0) {
@@ -987,37 +1036,37 @@
 							}
 						}
 						break;
+            
 					case 'td':
 						if (target.is('.day') && !target.is('.disabled')) {
 							var day = parseInt(target.text(), 10) || 1;
-							var year = this.viewDate.getUTCFullYear(),
-								month = this.viewDate.getUTCMonth(),
-								hours = this.viewDate.getUTCHours(),
+							var year = this.viewDate.getUTCFullYearProxy(type),
+								month = this.viewDate.getUTCMonthProxy(type),
+								hours = this.viewDate.getHours(),
 								minutes = this.viewDate.getUTCMinutes(),
 								seconds = this.viewDate.getUTCSeconds();
 							if (target.is('.old')) {
-								if (month === 0) {
-									month = 11;
+								if (month === type === 'Jalali' ? 1 : 0) {
+									month = type === 'Jalali' ? 12 : 11;
 									year -= 1;
 								} else {
 									month -= 1;
 								}
 							} else if (target.is('.new')) {
-								if (month == 11) {
-									month = 0;
+								if (type === 'Jalali' && month == 12 || month == 11) {
+									month = type === 'Jalali' ? 1 : 0;
 									year += 1;
 								} else {
 									month += 1;
 								}
 							}
-							this.viewDate.setUTCFullYear(year);
-							this.viewDate.setUTCMonth(month, day);
+							this.viewDate = DateProxy(type, year, month, day, hours, minutes, seconds);
 							this.element.trigger({
 								type: 'changeDay',
 								date: this.viewDate
 							});
 							if (this.viewSelect >= 2) {
-								this._setDate(UTCDate(year, month, day, hours, minutes, seconds, 0));
+								this._setDate(DateProxy(type, year, month, day, hours, minutes, seconds, 0));
 							}
 						}
 						var oldViewMode = this.viewMode;
@@ -1036,6 +1085,7 @@
 				this.date = date;
 			if (!which || which == 'view')
 				this.viewDate = date;
+        
 			this.fill();
 			this.setValue();
 			var element;
@@ -1068,7 +1118,7 @@
 			if (!dir) return date;
 			var new_date = new Date(date.valueOf());
 			//dir = dir > 0 ? 1 : -1;
-			new_date.setUTCHours(new_date.getUTCHours() + dir);
+			new_date.setHours(new_date.getHours() + dir);
 			return new_date;
 		},
 
@@ -1081,48 +1131,77 @@
 		},
 
 		moveMonth: function (date, dir) {
+    
 			if (!dir) return date;
+      
+      var type = this.calendarType;
+      
 			var new_date = new Date(date.valueOf()),
-				day = new_date.getUTCDate(),
-				month = new_date.getUTCMonth(),
-				mag = Math.abs(dir),
-				new_month, test;
+				  day = new_date.getUTCDateProxy(type),
+				  month = new_date.getUTCMonthProxy(type),
+				  mag = Math.abs(dir),
+				  new_month, test, prevYear;
+        
 			dir = dir > 0 ? 1 : -1;
 			if (mag == 1) {
 				test = dir == -1
 					// If going back one month, make sure month is not current month
 					// (eg, Mar 31 -> Feb 31 == Feb 28, not Mar 02)
 					? function () {
-					return new_date.getUTCMonth() == month;
+					return new_date.getUTCMonthProxy(type) == month;
 				}
 					// If going forward one month, make sure month is as expected
 					// (eg, Jan 31 -> Feb 31 == Feb 28, not Mar 02)
 					: function () {
-					return new_date.getUTCMonth() != new_month;
+					return new_date.getUTCMonthProxy(type) != new_month;
 				};
 				new_month = month + dir;
-				new_date.setUTCMonth(new_month);
+				new_date.setUTCMonthProxy(new_month, type);
 				// Dec -> Jan (12) or Jan -> Dec (-1) -- limit expected date to 0-11
-				if (new_month < 0 || new_month > 11)
-					new_month = (new_month + 12) % 12;
+				if (type !== 'Jalali') {
+          if (new_month < 0 || new_month > 11) {
+            new_month = (new_month + 12) % 12;
+          }
+        } else {
+          if (new_month <= 0) {
+            new_month = new_month + 12;
+            prevYear = new_date.getJalaliFullYear() - 1;
+            
+          }
+          if (new_month > 12) {
+            new_month = new_month - 12;
+          }
+        }
+        
 			} else {
+      
 				// For magnitudes >1, move one month at a time...
-				for (var i = 0; i < mag; i++)
+				for (var i = 0; i < mag; i++) {
+        
 					// ...which might decrease the day (eg, Jan 31 to Feb 28, etc)...
 					new_date = this.moveMonth(new_date, dir);
+        }
+        
 				// ...then reset the day, keeping it in the new month
-				new_month = new_date.getUTCMonth();
-				new_date.setUTCDate(day);
+				new_month = new_date.getUTCMonthProxy(type);
+				new_date.setUTCDateProxy(day, type);
+        
 				test = function () {
-					return new_month != new_date.getUTCMonth();
+					return new_month != new_date.getUTCMonthProxy(type);
 				};
 			}
+      
 			// Common date-resetting loop -- if date is beyond end of month, make it
 			// end of month
 			while (test()) {
-				new_date.setUTCDate(--day);
-				new_date.setUTCMonth(new_month);
+				new_date.setUTCDateProxy(--day, type);
+				new_date.setUTCMonthProxy(new_month, type);
 			}
+      
+      if (prevYear) {
+        new_date.setJalaliFullYear(prevYear);
+      }
+      
 			return new_date;
 		},
 
@@ -1348,6 +1427,12 @@
 			today:       "Today"
 		}
 	};
+  var jdates = {
+		en: {
+			months:      ["Farvardin", "Ordibehest", "Khordad", "Tir", "Mordad", "Shahrivar", "Mehr", "Aban", "Azar", "Day", "Bahman", "Esfand"],
+			monthsShort: ["Far", "Orb", "Khor", "Tir", "Mor", "Shahr", "Mehr", "Aban", "Azar", "Day", "Bah", "Esf"],
+		}
+	};
 
 	var DPGlobal = {
 		modes:            [
@@ -1377,11 +1462,16 @@
 				navStep: 10
 			}
 		],
-		isLeapYear:       function (year) {
+		isLeapYear: function (year) {
 			return (((year % 4 === 0) && (year % 100 !== 0)) || (year % 400 === 0))
 		},
-		getDaysInMonth:   function (year, month) {
-			return [31, (DPGlobal.isLeapYear(year) ? 29 : 28), 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month]
+		getDaysInMonth:   function (year, month, type) {
+      if (type !== 'Jalali') {
+        return [31, (DPGlobal.isLeapYear(year) ? 29 : 28), 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month];
+      } else {
+        month--; // jalali months are 1-based
+        return [31, 31, 31, 31, 31, 31, 30, 30, 30, 30, 30, (DPGlobal.isLeapYear(year) ? 30 : 29)][month];
+      }
 		},
 		getDefaultFormat: function (type, field) {
 			if (type == "standard") {
@@ -1418,12 +1508,14 @@
 			}
 			return {separators: separators, parts: parts};
 		},
-		parseDate:        function (date, format, language, type) {
+		parseDate: function (date, format, language, type, calendarType) {
+    
 			if (date instanceof Date) {
-				var dateUTC = new Date(date.valueOf() - date.getTimezoneOffset() * 60000);
+				var dateUTC = new Date(date.valueOf() /*- date.getTimezoneOffset() * 60000*/);
 				dateUTC.setMilliseconds(0);
 				return dateUTC;
 			}
+      
 			if (/^\d{4}\-\d{1,2}\-\d{1,2}$/.test(date)) {
 				format = this.parseFormat('yyyy-mm-dd', type);
 			}
@@ -1433,6 +1525,7 @@
 			if (/^\d{4}\-\d{1,2}\-\d{1,2}[T ]\d{1,2}\:\d{1,2}\:\d{1,2}[Z]{0,1}$/.test(date)) {
 				format = this.parseFormat('yyyy-mm-dd hh:ii:ss', type);
 			}
+      
 			if (/^[-+]\d+[dmwy]([\s,]+[-+]\d+[dmwy])*$/.test(date)) {
 				var part_re = /([-+]\d+)([dmwy])/,
 					parts = date.match(/([-+]\d+)([dmwy])/g),
@@ -1456,60 +1549,61 @@
 							break;
 					}
 				}
-				return UTCDate(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), date.getUTCHours(), date.getUTCMinutes(), date.getUTCSeconds(), 0);
+				return UTCDate(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), date.getHours(), date.getMinutes(), date.getSeconds(), 0);
 			}
+      
 			var parts = date && date.toString().match(this.nonpunctuation) || [],
 				date = new Date(0, 0, 0, 0, 0, 0, 0),
 				parsed = {},
-				setters_order = ['hh', 'h', 'ii', 'i', 'ss', 's', 'yyyy', 'yy', 'M', 'MM', 'm', 'mm', 'D', 'DD', 'd', 'dd', 'H', 'HH', 'p', 'P'],
-				setters_map = {
+				setters_order = ['hh', 'h', 'ii', 'i', 'ss', 's', 'yyyy', 'yy', 'M', 'MM', 'm', 'mm', 'D', 'DD', 'd', 'dd', 'H', 'HH', 'p', 'P'];
+				var setters_map = {
 					hh:   function (d, v) {
-						return d.setUTCHours(v);
+						return d.setHours(v);
 					},
 					h:    function (d, v) {
-						return d.setUTCHours(v);
+						return d.setHours(v);
 					},
 					HH:   function (d, v) {
-						return d.setUTCHours(v == 12 ? 0 : v);
+						return d.setHours(v == 12 ? 0 : v);
 					},
 					H:    function (d, v) {
-						return d.setUTCHours(v == 12 ? 0 : v);
+						return d.setHours(v == 12 ? 0 : v);
 					},
 					ii:   function (d, v) {
-						return d.setUTCMinutes(v);
+						return d.setMinutes(v);
 					},
 					i:    function (d, v) {
-						return d.setUTCMinutes(v);
+						return d.setMinutes(v);
 					},
 					ss:   function (d, v) {
-						return d.setUTCSeconds(v);
+						return d.setSeconds(v);
 					},
 					s:    function (d, v) {
-						return d.setUTCSeconds(v);
+						return d.setSeconds(v);
 					},
 					yyyy: function (d, v) {
-						return d.setUTCFullYear(v);
+						return d.setUTCFullYearProxy(v, calendarType);
 					},
 					yy:   function (d, v) {
-						return d.setUTCFullYear(2000 + v);
+						return d.setUTCFullYearProxy(calendarType === 'Jalali' ? 1300 + v : 2000 + v, calendarType);
 					},
 					m:    function (d, v) {
-						v -= 1;
+						if (calendarType !== 'Jalali') v -= 1;
 						while (v < 0) v += 12;
-						v %= 12;
-						d.setUTCMonth(v);
-						while (d.getUTCMonth() != v)
+						if (calendarType !== 'Jalali') v %= 12;
+						d.setUTCMonthProxy(v, calendarType);
+						while (d.getUTCMonthProxy(calendarType) != v)
 							if (isNaN(d.getUTCMonth()))
 								return d;
 							else
-								d.setUTCDate(d.getUTCDate() - 1);
+								d.setUTCDateProxy(d.getUTCDate() - 1, calendarType);
 						return d;
 					},
 					d:    function (d, v) {
-						return d.setUTCDate(v);
+						return d.setUTCDateProxy(v, calendarType);
 					},
 					p:    function (d, v) {
-						return d.setUTCHours(v == 1 ? d.getUTCHours() + 12 : d.getUTCHours());
+						return d.setHours(v == 1 ? d.getHours() + 12 : d.getHours());
 					}
 				},
 				val, filtered, part;
@@ -1524,20 +1618,23 @@
 					if (isNaN(val)) {
 						switch (part) {
 							case 'MM':
-								filtered = $(dates[language].months).filter(function () {
+                var dts = calendarType === 'Jalali' ? jdates : dates;
+								filtered = $(dts[language].months).filter(function () {
 									var m = this.slice(0, parts[i].length),
 										p = parts[i].slice(0, m.length);
 									return m == p;
 								});
-								val = $.inArray(filtered[0], dates[language].months) + 1;
+								val = $.inArray(filtered[0], dts[language].months) + 1;
+                if (calendarType === 'Jalali') val += 1;
 								break;
 							case 'M':
-								filtered = $(dates[language].monthsShort).filter(function () {
+                var dts = calendarType === 'Jalali' ? jdates : dates;
+								filtered = $(dts[language].monthsShort).filter(function () {
 									var m = this.slice(0, parts[i].length),
 										p = parts[i].slice(0, m.length);
 									return m.toLowerCase() == p.toLowerCase();
 								});
-								val = $.inArray(filtered[0], dates[language].monthsShort) + 1;
+								val = $.inArray(filtered[0], dts[language].monthsShort) + 1;
 								break;
 							case 'p':
 							case 'P':
@@ -1555,31 +1652,39 @@
 			}
 			return date;
 		},
-		formatDate:       function (date, format, language, type) {
+    
+		formatDate: function (date, format, language, type, calendarType) {
+    
 			if (date == null) {
 				return '';
 			}
+      
 			var val;
+      
 			if (type == 'standard') {
 				val = {
 					// year
-					yy:   date.getUTCFullYear().toString().substring(2),
-					yyyy: date.getUTCFullYear(),
+					yy:   date.getUTCFullYearProxy(calendarType).toString().substring(2),
+					yyyy: date.getUTCFullYearProxy(calendarType),
 					// month
-					m:    date.getUTCMonth() + 1,
-					M:    dates[language].monthsShort[date.getUTCMonth()],
-					MM:   dates[language].months[date.getUTCMonth()],
+					m:    calendarType === 'Jalali' ? date.getJalaliMonth() : date.getUTCMonth() + 1,
+					M:    calendarType === 'Jalali' ?
+                  jdates[language].monthsShort[date.getJalaliMonth() - 1] :
+                  dates[language].monthsShort[date.getUTCMonth()],
+					MM:   calendarType === 'Jalali' ?
+                  jdates[language].months[date.getJalaliMonth() - 1] :
+                  dates[language].months[date.getUTCMonth()],
 					// day
-					d:    date.getUTCDate(),
+					d:    date.getUTCDateProxy(calendarType),
 					D:    dates[language].daysShort[date.getUTCDay()],
 					DD:   dates[language].days[date.getUTCDay()],
-					p:    (dates[language].meridiem.length == 2 ? dates[language].meridiem[date.getUTCHours() < 12 ? 0 : 1] : ''),
+					p:    (dates[language].meridiem.length == 2 ? dates[language].meridiem[date.getHours() < 12 ? 0 : 1] : ''),
 					// hour
-					h:    date.getUTCHours(),
+					h:    date.getHours(),
 					// minute
-					i:    date.getUTCMinutes(),
+					i:    date.getMinutes(),
 					// second
-					s:    date.getUTCSeconds()
+					s:    date.getSeconds()
 				};
 
 				if (dates[language].meridiem.length == 2) {
@@ -1595,32 +1700,37 @@
 				val.ss = (val.s < 10 ? '0' : '') + val.s;
 				val.dd = (val.d < 10 ? '0' : '') + val.d;
 				val.mm = (val.m < 10 ? '0' : '') + val.m;
+        
 			} else if (type == 'php') {
 				// php format
 				val = {
 					// year
-					y: date.getUTCFullYear().toString().substring(2),
-					Y: date.getUTCFullYear(),
+					y: date.getUTCFullYearProxy(calendarType).toString().substring(2),
+					Y: date.getUTCFullYearProxy(calendarType),
 					// month
-					F: dates[language].months[date.getUTCMonth()],
-					M: dates[language].monthsShort[date.getUTCMonth()],
-					n: date.getUTCMonth() + 1,
-					t: DPGlobal.getDaysInMonth(date.getUTCFullYear(), date.getUTCMonth()),
+					F: calendarType === 'Jalali' ?
+                  jdates[language].months[date.getJalaliMonth() - 1] :
+                  dates[language].months[date.getUTCMonth()],
+					M: calendarType === 'Jalali' ?
+                  jdates[language].monthsShort[date.getJalaliMonth() - 1] :
+                  dates[language].monthsShort[date.getUTCMonth()],
+					n: calendarType === 'Jalali' ? date.getJalaliMonth() : date.getUTCMonth() + 1,
+					t: DPGlobal.getDaysInMonth(date.getUTCFullYear(), date.getUTCMonthProxy(calendarType)),
 					// day
-					j: date.getUTCDate(),
+					j: date.getUTCDateProxy(calendarType),
 					l: dates[language].days[date.getUTCDay()],
 					D: dates[language].daysShort[date.getUTCDay()],
 					w: date.getUTCDay(), // 0 -> 6
 					N: (date.getUTCDay() == 0 ? 7 : date.getUTCDay()),       // 1 -> 7
-					S: (date.getUTCDate() % 10 <= dates[language].suffix.length ? dates[language].suffix[date.getUTCDate() % 10 - 1] : ''),
+					S: (date.getUTCDateProxy(calendarType) % 10 <= dates[language].suffix.length ? dates[language].suffix[date.getUTCDateProxy(calendarType) % 10 - 1] : ''),
 					// hour
-					a: (dates[language].meridiem.length == 2 ? dates[language].meridiem[date.getUTCHours() < 12 ? 0 : 1] : ''),
-					g: (date.getUTCHours() % 12 == 0 ? 12 : date.getUTCHours() % 12),
-					G: date.getUTCHours(),
+					a: (dates[language].meridiem.length == 2 ? dates[language].meridiem[date.getHours() < 12 ? 0 : 1] : ''),
+					g: (date.getHours() % 12 == 0 ? 12 : date.getHours() % 12),
+					G: date.getHours(),
 					// minute
-					i: date.getUTCMinutes(),
+					i: date.getMinutes(),
 					// second
-					s: date.getUTCSeconds()
+					s: date.getSeconds()
 				};
 				val.m = (val.n < 10 ? '0' : '') + val.n;
 				val.d = (val.j < 10 ? '0' : '') + val.j;
@@ -1629,9 +1739,11 @@
 				val.H = (val.G < 10 ? '0' : '') + val.G;
 				val.i = (val.i < 10 ? '0' : '') + val.i;
 				val.s = (val.s < 10 ? '0' : '') + val.s;
+        
 			} else {
 				throw new Error("Invalid format type.");
 			}
+      
 			var date = [],
 				seps = $.extend([], format.separators);
 			for (var i = 0, cnt = format.parts.length; i < cnt; i++) {
@@ -1645,6 +1757,7 @@
 			}
 			return date.join('');
 		},
+    
 		convertViewMode:  function (viewMode) {
 			switch (viewMode) {
 				case 4:
