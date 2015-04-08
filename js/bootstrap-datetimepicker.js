@@ -963,7 +963,7 @@
 						if (!target.is('.disabled')) {
 							var year = this.viewDate.getUTCFullYear(),
 								month = this.viewDate.getUTCMonth(),
-								day = this.viewDate.getUTCDate(),
+								day = this.viewDate.getDate(),
 								hours = this.viewDate.getHours(),
 								minutes = this.viewDate.getUTCMinutes(),
 								seconds = this.viewDate.getUTCSeconds();
@@ -1553,9 +1553,10 @@
 			}
       
 			var parts = date && date.toString().match(this.nonpunctuation) || [],
-				date = new Date(0, 0, 0, 0, 0, 0, 0),
+				date = new Date(),
 				parsed = {},
 				setters_order = ['hh', 'h', 'ii', 'i', 'ss', 's', 'yyyy', 'yy', 'M', 'MM', 'm', 'mm', 'D', 'DD', 'd', 'dd', 'H', 'HH', 'p', 'P'];
+        date.setDate(1);
 				var setters_map = {
 					hh:   function (d, v) {
 						return d.setHours(v);
@@ -1592,14 +1593,13 @@
 						while (v < 0) v += 12;
 						if (calendarType !== 'Jalali') v %= 12;
 						d.setUTCMonthProxy(v, calendarType);
-						while (d.getUTCMonthProxy(calendarType) != v) {
-							if (isNaN(d.getUTCMonthProxy(calendarType))) {
+            
+						while (d.getUTCMonthProxy(calendarType) != v)
+							if (isNaN(d.getUTCMonth()))
 								return d;
-							} else {
-								d.setUTCDateProxy(d.getUTCDateProxy(calendarType) - 1, calendarType);
-							}
-						}
-						return d;
+							else
+								d.setUTCDateProxy(d.getUTCDate() - 1, calendarType);
+               return d;
 					},
 					d:    function (d, v) {
 						return d.setUTCDateProxy(v, calendarType);
@@ -1627,6 +1627,7 @@
 									return m == p;
 								});
 								val = $.inArray(filtered[0], dts[language].months) + 1;
+                if (calendarType === 'Jalali') val += 1;
 								break;
 							case 'M':
                 var dts = calendarType === 'Jalali' ? jdates : dates;
